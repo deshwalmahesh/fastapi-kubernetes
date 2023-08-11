@@ -1,0 +1,78 @@
+# This file shows that Deployment and Service can be added in 1 file. Created a MongoDB image which is statis and managed by ConfigMap and secrets
+# This creates an "INTERNAL" service where applications outside the cluster can't talk to this Service
+# Internal apps can connect to it using the URL present in the ConfigMap file
+
+
+# This code creates a persistant storage so even if the system restarts, the data is preserved
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 128Mi # 128 MB storage
+
+---
+# StatefulSet Code (not Deployment)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb-stateful
+  labels:
+    app: mongodb
+spec:
+  serviceName: "mongodb-service"
+  replicas: 1 # We usually don't want replicas of DataBases as they can create issues
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo # Pull the mongo docker image from Docker Hub
+        ports:
+        - containerPort: 27017 # This is default port of MongoDB
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME # Username to use for MongoDB . Same process goes for the password below
+          valueFrom: # Where to Search in secret files
+            secretKeyRef: # What is the process to find that username?
+              name: mongodb-secret # Search all the secrets and find which has "mongodb-secret" in it's metadata. In our case, it is mongo_secrets.yaml file
+              key: mongo-root-username # If the file is found, use the value which is given to the key named "mongo-root-username" in that file
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom: 
+            secretKeyRef:
+              name: mongodb-secret
+              key: mongo-root-password
+        volumeMounts: # Persistent Data
+        - name: mongodb-data
+          mountPath: /data/db # this is the directory inside the container where MongoDB stores data
+  volumeClaimTemplates:
+  - metadata:
+      name: mongodb-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 256Mi # 256 MB storage
+
+---
+# Service file for MongoDB
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+spec:
+  clusterIP: None
+  selector:
+    app: mongodb
+  ports:
+    - protocol: TCP
+      port: 27017 # Port of system
+      targetPort: 27017 # Port of the docker image so it's binding ports as: -p 27017:27017

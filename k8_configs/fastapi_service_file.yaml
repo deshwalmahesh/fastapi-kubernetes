@@ -1,0 +1,18 @@
+# This is referencing to the FastApi Pod and is a service to it. Service makes it possible to handle IP addresses, incoming requests forwardong etc
+
+apiVersion: v1  # The API version to use
+kind: Service   # Type of the Kubernetes resource
+metadata:
+  name: fastapi-app-service  # The name of the Service
+  labels:
+    app: fastapi-app         # Labels to help organize and select resources
+spec:
+  type: LoadBalancer  # The type of Service LoadBalancer means it's exposed to external IP
+  selector:
+    app: fastapi-app  # The label selector for which Pods this Service should target
+  ports:
+  - protocol: TCP
+    port: 80  # The port that the Service will be available on internally
+    targetPort: 8000  # The port that the Service should send traffic to on the Pods
+    nodePort: 30000  # The port that the Service will be available on externally. range 30000-32767. For services of type LoadBalancer on a production-grade cluster, an external IP would be provisioned to your service by the cloud provider
+

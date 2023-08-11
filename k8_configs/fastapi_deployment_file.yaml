@@ -1,0 +1,66 @@
+# This the Deployment file to create Pod for the FastAPI application. Think of it as similar way of manually creating Docker images for the app
+# You can use these extra things like Resource management etc to all of the deployments
+
+apiVersion: apps/v1 # The API version to use
+kind: Deployment    # Type of the Kubernetes resource
+metadata:
+  name: fastapi-deployment  # The name of the Deployment
+  labels:
+    app: fastapi-app            # Labels to help organize and select resources
+spec:
+  replicas: 2  # The number of Pods to ensure is running
+  selector:
+    matchLabels:  # The label selector for which Pods are managed by this Deployment
+      app: fastapi-app
+  strategy:
+    type: RollingUpdate   # The type of deployment strategy
+    rollingUpdate:        # The rolling update strategy details
+      maxUnavailable: 1  # Max number of unavailable pods when updating
+      maxSurge: 1        # Max extra pods that can be created
+  template: # This the POD Configuration (where app is running) has it's own configuration. It is same as where you build Docler image etc
+    metadata:
+      labels:
+        app: fastapi-app
+    spec:
+      containers:  # The specification of the Docker containers to run
+      - name: fastapi-app-container
+        image: maheshjackett/fastapi-image-test-k8:latest
+        ports:
+        - containerPort: 8000
+        resources:  # The resource requests and limits for the container
+          requests:
+            cpu: "100m" # 10% of a single CPU core.
+            memory: "100Mi" # 100 Mebibytes (2^20 bytes) => 100 * 2^20 bytes = 104857600 bytes
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
+        readinessProbe: # Probe to check if the application is ready to serve traffic
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        livenessProbe:  # Probe to check if the application is alive or dead
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        env: # Set environment variables
+        - name: MONGODB_URL # This the environment variable which will be referenced in os.getenv() in the main.py
+          valueFrom: # It gets it's value from the configmap which in turns gets it's value from the "mongodb-service" which is running at some internal address
+            configMapKeyRef:
+              name: mongodb-configmap
+              key: database_url
+        - name: MONGODB_USERNAME # Another env variable which holds value for the Same uername used in the secretss
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: mongo-root-username
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: mongo-root-password
+
+

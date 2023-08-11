@@ -1,0 +1,44 @@
+# Re ROute the incoming traffic coming to my-deployed-app.com to 192.168.49.2 (or wherever the fastapi-app-service is running)
+# NOTE: We need to edit `/etc/hosts` to map  as: echo '192.168.49.2 my-deployed-app.com' | sudo tee -a /etc/hosts
+# Then we need to enable nginx for routing as 'minikube addons enable ingress'
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-routing
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: my-deployed-app.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: fastapi-app-service
+            port:
+              number: 80
+  
+  - host: service.mongo.express
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: mongo-express-service
+            port:
+              number: 8081
+
+  - host: dashboard.kibana
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: kibana-service
+            port:
+              number: 5601

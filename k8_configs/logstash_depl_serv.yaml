@@ -1,0 +1,48 @@
+# Logstash deployment and service
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:7.15.2
+        ports:
+        - containerPort: 5044
+          name: http
+        env:
+        - name: ELASTICSEARCH_URL
+          value: http://elasticsearch:9200
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1.5Gi
+          requests:
+            cpu: 100m
+            memory: 1Gi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: logstash
+  ports:
+    - protocol: TCP
+      port: 5044
+      targetPort: 5044
+
